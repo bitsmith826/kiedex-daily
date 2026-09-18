@@ -1,0 +1,10 @@
+[
+  {
+    "name": "Akun 1",
+    "refresh_token": "refresh_token_akun_1_di_sini"
+  },
+  {
+    "name": "Akun 2",
+    "refresh_token": "refresh_token_akun_2_di_sini"
+  }
+]

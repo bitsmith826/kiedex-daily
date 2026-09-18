@@ -1,0 +1,31 @@
+# Dependency directories
+node_modules/
+package-lock.json
+
+# Environment variables & secrets (CRITICAL)
+.env
+.env.local
+.env.*.local
+
+# Sensitive Account Data & Tokens (CRITICAL)
+accounts.json
+accounts.backup.json
+
+# Logs & temp
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE configuration
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

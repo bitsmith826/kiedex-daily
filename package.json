@@ -1,0 +1,16 @@
+{
+  "name": "kiedex-daily-fetcher",
+  "version": "1.0.0",
+  "description": "Script otomatisasi daily fetcher Kiedex menggunakan native fetch ESM",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "trade": "node spot_trader.js",
+    "futures": "node futures_trader.js",
+    "missions": "node auto_missions.js"
+  },
+  "keywords": ["kiedex", "automation", "supabase", "fetcher"],
+  "author": "",
+  "license": "ISC"
+}
