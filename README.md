@@ -2,6 +2,11 @@
 
 Automasi multi-akun harian untuk platform Kiedex (Supabase backend) menggunakan Node.js (ESM native `fetch`).
 
+> [!WARNING]
+> **DISCLAIMER / PERNYATAAN EDUKASI:**  
+> Proyek dan kode dalam repositori ini dibuat murni untuk **tujuan edukasi, pembelajaran pemrograman automasi Node.js, eksplorasi REST/RPC API Supabase, dan riset teknologi Web3**.  
+> Penulis/kontributor tidak bertanggung jawab atas segala kerugian finansial, penalti, pemblokiran akun, atau dampak apa pun yang mungkin timbul akibat penggunaan skrip ini. Segala risiko sepenuhnya ditanggung oleh masing-masing pengguna (**Use at your own risk**).
+
 ---
 
 ## ⚡ Fitur Utama
@@ -60,8 +65,17 @@ Buka file `accounts.json` dan masukkan nama serta `refresh_token` akun Kiedex An
 ]
 ```
 
-> [!NOTE]
-> Anda **tidak perlu memasukkan Bearer token** yang panjang. Cukup `refresh_token` saja. Saat dijalankan, bot akan otomatis melengkapi email, ID akun, dan merotasi token baru ke file ini.
+> [!TIP]
+> **Cara Mendapatkan `refresh_token` dari Browser:**
+> 1. Buka dan login ke website [kiedex.app](https://www.kiedex.app/) di browser (Chrome / Edge / Brave).
+> 2. Tekan tombol **F12** (atau klik kanan $\rightarrow$ **Inspect**) untuk membuka Developer Tools.
+> 3. Buka tab **Application** (atau **Penyimpanan / Storage** di Firefox).
+> 4. Di menu sebelah kiri, pilih **Local Storage** $\rightarrow$ `https://www.kiedex.app`.
+> 5. Cari item dengan nama key berawalan `sb-...-auth-token`.
+> 6. Di dalam value JSON-nya, cari teks `"refresh_token": "xxxx"`.
+> 7. Salin kode token tersebut (string ~12-16 karakter) dan tempel ke `accounts.json`.
+>
+> *Catatan: Anda **tidak perlu** menyalin Bearer token yang panjang. Bot akan otomatis menghasilkan Bearer token baru secara otomatis dari `refresh_token`.*
 
 ### 4. Menjalankan Bot
 Cukup jalankan satu perintah berikut:
@@ -75,7 +89,7 @@ Bot akan otomatis membersihkan layar konsol, memproses seluruh akun satu per sat
 ## 🔒 Keamanan & Data Pribadi
 
 Repository ini sudah dilengkapi dengan `.gitignore` ketat:
-* File `accounts.json` dan `accounts.backup.json` (berisi token dan email Anda) **TIDAK AKAN** pernah terunggah ke GitHub.
+* File `accounts.json` dan `accounts.backup.json` (berisi token dan email Anda) **TIDAK AKAN** pernah terunggah ke Git.
 * File `.env` (jika digunakan) juga diabaikan oleh Git.
 
 ---
