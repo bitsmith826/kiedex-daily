@@ -37,8 +37,8 @@ Automasi multi-akun harian untuk platform Kiedex (Supabase backend) menggunakan 
 
 ### 2. Clone Repository
 ```bash
-git clone https://github.com/USERNAME/REPO_NAME.git
-cd REPO_NAME
+git clone https://github.com/bitsmith826/kiedex-daily.git
+cd kiedex-daily
 ```
 
 ### 3. Konfigurasi Akun
