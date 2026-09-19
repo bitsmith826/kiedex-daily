@@ -117,6 +117,12 @@ async function executeQuickTrade(accessToken, margin = 15, leverage = 10) {
   });
 
   if (!openRes.ok || !openRes.data?.success) {
+    const errText = JSON.stringify(openRes.data).toLowerCase();
+    if (errText.includes('insufficient oil') && (margin > 2 || leverage > 2)) {
+      logger.warn(`Oil tidak cukup untuk margin $${margin} (${leverage}x), mencoba ulang dengan margin minimal $2 (2x)...`);
+      await sleep(1500);
+      return executeQuickTrade(accessToken, 2, 2);
+    }
     logger.error(`Gagal buka posisi: ${JSON.stringify(openRes.data)}`);
     return false;
   }

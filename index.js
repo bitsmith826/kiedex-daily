@@ -207,7 +207,16 @@ async function executeQuickTrade(accessToken, margin = 25, leverage = 10, maxRet
     if (!openRes.ok || !openRes.data?.success) {
       const errMsg = openRes.data?.message || openRes.data?.error || JSON.stringify(openRes.data);
       const lower = String(errMsg).toLowerCase();
-      if (lower.includes('wait') || lower.includes('before opening') || lower.includes('p0001')) {
+      if (lower.includes('insufficient oil')) {
+        if (margin > 2 || leverage > 2) {
+          margin = 2;
+          leverage = 2;
+          await sleep(1500);
+          continue;
+        }
+        return { success: false, error: errMsg };
+      }
+      if (lower.includes('wait') || lower.includes('before opening')) {
         await sleep(3500);
         continue;
       }
@@ -238,7 +247,7 @@ async function executeQuickTrade(accessToken, margin = 25, leverage = 10, maxRet
 
     if (closeRes.ok && closeRes.data?.success) {
       const pnl = Number(closeRes.data.pnl || 0);
-      return { success: true, pnl, posId, isWin: pnl > 0 };
+      return { success: true, pnl, posId, isWin: pnl > 0, margin, leverage };
     } else {
       const err = closeRes.data?.message || closeRes.data?.error || JSON.stringify(closeRes.data);
       return { success: false, error: err };
@@ -330,38 +339,66 @@ async function processAccount(account, index, total, allAccounts) {
   if (tradeCount >= 5 && totalVol >= 1000 && winCount >= 1) {
     console.log(`        • Status        : ${formatBadge('success', 'SELESAI')} Misi trading t1 - t4 sudah terpenuhi`);
   } else {
-    // Cek saldo Futures dan auto-transfer jika < $25
-    const balCheckRes = await apiRequest(`/rest/v1/balances?select=spot_usdt_balance,futures_usdt_balance&user_id=eq.${userId}`, accessToken);
+    // Cek saldo Futures dan auto-transfer jika < $10
+    const balCheckRes = await apiRequest(`/rest/v1/balances?select=spot_usdt_balance,futures_usdt_balance,oil_balance&user_id=eq.${userId}`, accessToken);
     const curBal = balCheckRes.data?.[0];
-    const futBal = Number(curBal?.futures_usdt_balance || 0);
+    let futBal = Number(curBal?.futures_usdt_balance || 0);
     const spotBal = Number(curBal?.spot_usdt_balance || 0);
+    const oilBal = Number(curBal?.oil_balance || 0);
 
-    if (futBal < 25 && spotBal >= 25) {
+    if (futBal < 10 && spotBal >= 10) {
       const transferAmount = Math.min(spotBal, 50);
       console.log(`        • Auto-Transfer : ${formatBadge('info', 'TRANSFER')} $${transferAmount} Spot -> Futures`);
       await apiRequest('/rest/v1/rpc/transfer_usdt', accessToken, {
         method: 'POST',
         body: { p_from: 'spot', p_to: 'futures', p_amount: transferAmount }
       });
+      futBal += transferAmount;
       await sleep(1500);
     }
 
-    // Hitung berapa trade yang diperlukan agar trade_count >= 5, volume >= 1000, dan win_count >= 1
-    // Margin $25 x Leverage 10x = $250 Volume per trade
+    // Hitung sisa trade yang diperlukan (target 5 trade harian & minimal 1x win)
     const tradesNeededForCount = Math.max(0, 5 - tradeCount);
-    const volDeficit = Math.max(0, 1000 - totalVol);
-    const tradesNeededForVol = Math.ceil(volDeficit / 250);
-    let totalNeeded = Math.max(tradesNeededForCount, tradesNeededForVol);
+    let totalNeeded = tradesNeededForCount;
     if (totalNeeded === 0 && winCount === 0) totalNeeded = 1;
+
+    // Adaptasi dinamis Margin & Leverage berdasarkan ketersediaan saldo Oil
+    // Biaya Oil = (Margin * Leverage) * 2.0
+    let tradeMargin = 25;
+    let tradeLeverage = 10;
+
+    if (oilBal < 8) {
+      console.log(`        • Status Oil    : ${formatBadge('warn', 'OIL RENDAH')} Saldo Oil (${oilBal.toFixed(1)}) tidak cukup untuk fee gas (< 8 Oil)`);
+      totalNeeded = 0;
+    } else {
+      const oilPerTrade = Math.floor(oilBal / Math.max(1, totalNeeded));
+      const maxNotional = Math.floor(oilPerTrade / 2);
+
+      if (maxNotional >= 250 && futBal >= 25) {
+        tradeMargin = 25; tradeLeverage = 10;
+      } else if (maxNotional >= 100 && futBal >= 10) {
+        tradeMargin = 10; tradeLeverage = 10;
+      } else if (maxNotional >= 40 && futBal >= 8) {
+        tradeMargin = 8; tradeLeverage = 5;
+      } else if (maxNotional >= 20 && futBal >= 5) {
+        tradeMargin = 5; tradeLeverage = 4;
+      } else if (maxNotional >= 10 && futBal >= 5) {
+        tradeMargin = 5; tradeLeverage = 2;
+      } else {
+        tradeMargin = 2; tradeLeverage = 2;
+      }
+    }
 
     for (let t = 1; t <= totalNeeded; t++) {
       process.stdout.write(`        • Trade [${t}/${totalNeeded}]   : Menahan posisi & mencari profit...`);
-      const tradeRes = await executeQuickTrade(accessToken, 25, 10);
+      const tradeRes = await executeQuickTrade(accessToken, tradeMargin, tradeLeverage);
       if (tradeRes.success) {
         if (tradeRes.isWin) winCount++;
         const pnl = tradeRes.pnl;
         const pnlStr = pnl >= 0 ? `${C.green}+$${pnl.toFixed(2)}${C.reset}` : `${C.red}-$${Math.abs(pnl).toFixed(2)}${C.reset}`;
-        process.stdout.write(`\r        • Trade [${t}/${totalNeeded}]   : ${formatBadge('success', 'SELESAI')} Margin $25 (10x) | PnL: ${pnlStr}        \n`);
+        const usedMargin = tradeRes.margin ?? tradeMargin;
+        const usedLev = tradeRes.leverage ?? tradeLeverage;
+        process.stdout.write(`\r        • Trade [${t}/${totalNeeded}]   : ${formatBadge('success', 'SELESAI')} Margin $${usedMargin} (${usedLev}x) | PnL: ${pnlStr}        \n`);
       } else {
         process.stdout.write(`\r        • Trade [${t}/${totalNeeded}]   : ${formatBadge('error', 'GAGAL')} ${C.red}${tradeRes.error}${C.reset}           \n`);
       }
